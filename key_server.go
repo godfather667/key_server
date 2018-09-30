@@ -37,17 +37,11 @@ func GetBook(w http.ResponseWriter, r *http.Request) {
 
 // Get Persons Address at "uniqID"
 func GetPerson(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	fmt.Println("vars = ", vars)
-	in := vars["ImportCSV"]
-	fmt.Println("In = ", in)
 	fmt.Println("Get Persons Address")
 }
 
 // Create Person in Address Book
 func CreatePerson(w http.ResponseWriter, r *http.Request) {
-	//	params := mux.Vars(r)
-	//	fmt.Println("Params = ", params)
 	fmt.Println("Create Person")
 }
 
@@ -63,9 +57,7 @@ func DeletePerson(w http.ResponseWriter, r *http.Request) {
 
 // Import Data Base in CSV Format
 func ImportCSV(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	fmt.Println("vars = ", vars)
-
+	fmt.Println("Import CSV File")
 }
 
 // Export Data Base in CSV Format
@@ -91,8 +83,8 @@ func main() {
 	router.HandleFunc("/address/{id}", CreatePerson).Methods("POST")
 	router.HandleFunc("/address/{id}", ModifyPerson).Methods("PUT")
 	router.HandleFunc("/address/{id}", DeletePerson).Methods("DELETE")
-	router.HandleFunc("/address/{Import}", ImportCSV).Methods("GET")
-	router.HandleFunc("/address/{Export}", ExportCSV).Methods("POST")
+	router.HandleFunc("/ImportCSV", ImportCSV).Methods("GET")
+	router.HandleFunc("/ExportCSV", ExportCSV).Methods("POST")
 	log.Fatal(http.ListenAndServe(":8000", router))
 
 }
