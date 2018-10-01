@@ -1,0 +1,14 @@
+#!/bin/bash
+echo "Curl Command File"
+#
+curl -X GET http://localhost:8000/address
+echo "------------"
+curl -X POST -d '{"uniq_id":"1","first_name":"Charles","last_name":"Smith","email_addr":"x@x.com","phone_numb":"555-555-0000"}' http://localhost:8000/address
+curl -X POST -d '{"uniq_id":"1","first_name":"Mike","last_name":"Jones","email_addr":"x@x.com","phone_numb":"555-555-0000"}' http://localhost:8000/address
+curl -X POST -d '{"uniq_id":"1","first_name":"Bobby","last_name":"Smith","email_addr":"x@x.com","phone_numb":"555-555-0000"}' http://localhost:8000/address
+curl -X GET  http://localhost:8000/address/1
+curl -X GET  http://localhost:8000/address/3
+curl -X PUT -d '{"first_name":"Barbra","last_name":"Chow"}' http://localhost:8000/address/3
+curl -X DELETE http://localhost:8000/address/2
+curl -X GET http://localhost:8000/address
+
