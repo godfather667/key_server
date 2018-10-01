@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -22,20 +23,26 @@ type Person struct {
 	PhoneNumb string `json:"phone_numb,omitempty"`
 }
 
+type FileSpec struct {
+	FileName string `json:"file_name,omitempty"`
+}
+
 // topID - Keeps Track of the highest ID recorded
 var topID int // Top ID in Database
 
 // In-memory Representation of Database
-//        - topID lives "at" uniqID zero(0) in the external Keystore
+//        - topID lives "at" uniqID zero(0) in the external Keystore.
+//        - KeyStore[0] is a Reserved System Record.
 //
 // DESIGN - UniqID's of deleted records are "lost", all new records
 //        - are assigned topID+1 for their uniqID. The mechanics of
 //        - map processing protect against unassigned keys (uniqID's)
 //
-// LIMITS - The Internal Copy of Database is loaded on entry and saved
-//          anytime the Internal Copy is Modified.
+// LIMITS - The Internal Copy of database is loaded on entry and saved
+//          anytime the Internal Copy is modified.
+//
 //        - Thus Database is safe as long as the program not interrupted
-//          during actual database writes. It not perfectly safe but it is
+//          during actual database writes. It not perfectly safe, but it is
 //          reasonably safe. It is also not safe if used in a concurrent
 //          situation.
 //
@@ -52,20 +59,15 @@ func check(s string, e error) {
 // GetBook - Return All Valid Records in Last Name Order
 func GetBook(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Address List = ", keyStore)
-	//	saveDatabase()
 	fmt.Println("Get Address Book")
 }
 
 // Get Persons Address at "uniqID"
 func GetPerson(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	fmt.Println(params)
 	item := params["id"]
-	fmt.Println("Item = ", item)
 	ui, err := strconv.Atoi(item)
-	if err != nil {
-		panic(err)
-	}
+	check("String Conversion Failure", err)
 	fmt.Println("Requested Person = ", keyStore[ui])
 	fmt.Println("Get Persons Address")
 }
@@ -75,9 +77,7 @@ func CreatePerson(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var p Person
 	err := decoder.Decode(&p)
-	if err != nil {
-		panic(err)
-	}
+	check("Json Decorder Failure", err)
 	topID += 1
 	ui := strconv.Itoa(topID)
 	keyStore[0] = Person{ui, "-first-", "-last-", "-email-", "-phone-"}
@@ -85,7 +85,6 @@ func CreatePerson(w http.ResponseWriter, r *http.Request) {
 	keyStore[topID] = np
 	fmt.Println("Create Person")
 	saveDatabase()
-	// fmt.Println(keyStore)
 }
 
 // modify Person at "uniqID"
@@ -93,21 +92,13 @@ func ModifyPerson(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var p Person
 	err := decoder.Decode(&p)
-	if err != nil {
-		panic(err)
-	}
+	check("Json Decorder Failure", err)
 	params := mux.Vars(r)
-	fmt.Println(params)
 	item := params["id"]
-	//	fmt.Println("Item = ", item)
 	ui, err := strconv.Atoi(item)
-	if err != nil {
-		panic(err)
-	}
+	check("String Conversion Failure", err)
 
 	cp := keyStore[ui]
-	fmt.Println("CP = ", cp)
-
 	if len(p.FirstName) > 0 {
 		cp.FirstName = p.FirstName
 	}
@@ -123,21 +114,15 @@ func ModifyPerson(w http.ResponseWriter, r *http.Request) {
 	np := Person{cp.UniqID, cp.FirstName, cp.LastName, cp.EmailAddr, cp.PhoneNumb}
 	keyStore[ui] = np
 	saveDatabase()
-	//	fmt.Println("NP = ", np, "UI = ", ui)
-	//  fmt.Println("KeyStore = ", keyStore[ui])
 	fmt.Println("Modify Person")
 }
 
 // Delete Person at "uniqID"
 func DeletePerson(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	fmt.Println(params)
 	item := params["id"]
-	//	fmt.Println("Item = ", item)
 	ui, err := strconv.Atoi(item)
-	if err != nil {
-		panic(err)
-	}
+	check("String Conversion Failure", err)
 	delete(keyStore, ui)
 	saveDatabase()
 	fmt.Println("Delete Person")
@@ -145,16 +130,73 @@ func DeletePerson(w http.ResponseWriter, r *http.Request) {
 
 // Import Data Base in CSV Format
 func ImportCSV(w http.ResponseWriter, r *http.Request) {
+	dat, err := ioutil.ReadFile("Data.csv")
+	check("Read of Data.csv Failed! ", err)
+	str_buf := strings.Split(string(dat), "\n")
+
+	for k := range keyStore { // Clear keyStore
+		delete(keyStore, k)
+	}
+	init := Person{"0", "-first-", "-last-", "-email-", "-phone-"}
+	keyStore[0] = init
+	topID = 0
+
+	for i, v := range str_buf {
+		if len(v) != 0 {
+			topID += 1
+			fmt.Println("Line[", i, "] = ", v, "len = ", len(v))
+			d := strings.Split(v, ",")
+			cp := Person{}
+			for j, f := range d {
+				switch j {
+				case 0:
+					cp.UniqID = f
+				case 1:
+					cp.FirstName = f
+				case 2:
+					cp.LastName = f
+				case 3:
+					cp.EmailAddr = f
+				case 4:
+					cp.PhoneNumb = f
+				default:
+					fmt.Println("Default Error")
+				}
+			}
+			keyStore[topID] = cp
+		}
+	}
+	fmt.Println("Address List = ", keyStore)
 	fmt.Println("Import CSV File")
 }
 
 // Export Data Base in CSV Format
 func ExportCSV(w http.ResponseWriter, r *http.Request) {
+	f, err := os.Create("Data.csv")
+	check("Failed to open 'Data.csv'", err)
+	defer f.Close()
+	var line string
+	for _, v := range keyStore {
+		if v.FirstName != "-first-" {
+			line = fmt.Sprintf("\"%v\", \"%v\", \"%v\", \"%v\", \"%v\"\n", v.UniqID, v.FirstName, v.LastName, v.EmailAddr, v.PhoneNumb)
+		}
+		_, err := f.WriteString(line)
+		check("Write Failed for 'Data.csv'", err)
+	}
 	fmt.Println("Export CSV File")
 }
 
+//func GetBook(w http.ResponseWriter, r *http.Request) {
+//	fmt.Println("Address List = ", keyStore)
+//	fmt.Println("Get Address Book")
+//}
+func SaveAddr(w http.ResponseWriter, r *http.Request) {
+	saveDatabase()
+	fmt.Println("Closing Address Book!")
+	os.Exit(1)
+}
+
 func loadDatabase() {
-	//	var xMem []Page // Temporary Blank in-memory Database
 	data, err := ioutil.ReadFile("Data.db") // Load Database
 	if err != nil {                         // If missing - Create
 		data, err = json.Marshal(keyStore) // Marshall Database
@@ -207,8 +249,8 @@ func main() {
 	router.HandleFunc("/address", CreatePerson).Methods("POST")
 	router.HandleFunc("/address/{id}", ModifyPerson).Methods("PUT")
 	router.HandleFunc("/address/{id}", DeletePerson).Methods("DELETE")
-	router.HandleFunc("/ImportCSV", ImportCSV).Methods("GET")
-	router.HandleFunc("/ExportCSV", ExportCSV).Methods("POST")
+	router.HandleFunc("/address/import", ImportCSV).Methods("POST")
+	router.HandleFunc("/address/export", ExportCSV).Methods("POST")
+	router.HandleFunc("/address/save", SaveAddr).Methods("POST")
 	log.Fatal(http.ListenAndServe(":8000", router))
-
 }
