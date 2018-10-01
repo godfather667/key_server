@@ -1,9 +1,0 @@
-#!/bin/bash
-echo "Curl Commands"
-curl  -H "Content-Type: application/json" -X GET http://localhost:8000/address
-curl  -H "Content-Type: application/json" -X GET http://localhost:8000/address/1
-curl  -d '{"first_name":"Charles"}' -H "Content-Type: application/json" -X POST http://localhost:8000/address/1
-curl  -H "Content-Type: application/json" -X PUT http://localhost:8000/address/1
-curl  -H "Content-Type: application/json" -X DELETE http://localhost:8000/address/1
-curl  -H "Content-Type: application/json" -X GET http://localhost:8000/ImportCSV
-curl  -H "Content-Type: application/json" -X POST http://localhost:8000/ExportCSV
