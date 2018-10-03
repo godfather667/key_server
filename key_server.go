@@ -15,6 +15,7 @@ import (
 )
 
 // Person Structure stores data for each person entered into the Database.
+
 type Person struct {
 	UniqID    string `json:"uniq_id,omitempty"`
 	FirstName string `json:"first_name,omitempty"`
@@ -23,9 +24,7 @@ type Person struct {
 	PhoneNumb string `json:"phone_numb,omitempty"`
 }
 
-type FileSpec struct {
-	FileName string `json:"file_name,omitempty"`
-}
+type ks map[int]Person // Keystore Database Structure
 
 // topID - Keeps Track of the highest ID recorded
 var topID int // Top ID in Database
@@ -46,7 +45,10 @@ var topID int // Top ID in Database
 //          reasonably safe. It is also not safe if used in a concurrent
 //          situation.
 //
-var keyStore map[int]Person // Keystore Database Structure
+//          To insure Database Integrity Please issue "address/save".
+//          That will explicitly save the current in-memory Copy and exit(1).
+//
+var KeyStore ks // Keystore Database Structure
 
 // check - Test for Error and Panic if not nil.
 func check(s string, e error) {
@@ -58,7 +60,7 @@ func check(s string, e error) {
 
 // GetBook - Return All Valid Records in Last Name Order
 func GetBook(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Address List = ", keyStore)
+	fmt.Println("Address List = ", KeyStore)
 	fmt.Println("Get Address Book")
 }
 
@@ -68,7 +70,7 @@ func GetPerson(w http.ResponseWriter, r *http.Request) {
 	item := params["id"]
 	ui, err := strconv.Atoi(item)
 	check("String Conversion Failure", err)
-	fmt.Println("Requested Person = ", keyStore[ui])
+	fmt.Println("Requested Person = ", KeyStore[ui])
 	fmt.Println("Get Persons Address")
 }
 
@@ -80,9 +82,9 @@ func CreatePerson(w http.ResponseWriter, r *http.Request) {
 	check("Json Decorder Failure", err)
 	topID += 1
 	ui := strconv.Itoa(topID)
-	keyStore[0] = Person{ui, "-first-", "-last-", "-email-", "-phone-"}
+	KeyStore[0] = Person{ui, "-first-", "-last-", "-email-", "-phone-"}
 	np := Person{ui, p.FirstName, p.LastName, p.EmailAddr, p.PhoneNumb}
-	keyStore[topID] = np
+	KeyStore[topID] = np
 	fmt.Println("Create Person")
 	saveDatabase()
 }
@@ -98,7 +100,7 @@ func ModifyPerson(w http.ResponseWriter, r *http.Request) {
 	ui, err := strconv.Atoi(item)
 	check("String Conversion Failure", err)
 
-	cp := keyStore[ui]
+	cp := KeyStore[ui]
 	if len(p.FirstName) > 0 {
 		cp.FirstName = p.FirstName
 	}
@@ -112,7 +114,7 @@ func ModifyPerson(w http.ResponseWriter, r *http.Request) {
 		cp.PhoneNumb = p.PhoneNumb
 	}
 	np := Person{cp.UniqID, cp.FirstName, cp.LastName, cp.EmailAddr, cp.PhoneNumb}
-	keyStore[ui] = np
+	KeyStore[ui] = np
 	saveDatabase()
 	fmt.Println("Modify Person")
 }
@@ -123,7 +125,7 @@ func DeletePerson(w http.ResponseWriter, r *http.Request) {
 	item := params["id"]
 	ui, err := strconv.Atoi(item)
 	check("String Conversion Failure", err)
-	delete(keyStore, ui)
+	delete(KeyStore, ui)
 	saveDatabase()
 	fmt.Println("Delete Person")
 }
@@ -134,11 +136,11 @@ func ImportCSV(w http.ResponseWriter, r *http.Request) {
 	check("Read of Data.csv Failed! ", err)
 	str_buf := strings.Split(string(dat), "\n")
 
-	for k := range keyStore { // Clear keyStore
-		delete(keyStore, k)
+	for k := range KeyStore { // Clear KeyStore
+		delete(KeyStore, k)
 	}
 	init := Person{"0", "-first-", "-last-", "-email-", "-phone-"}
-	keyStore[0] = init
+	KeyStore[0] = init
 	topID = 0
 
 	for i, v := range str_buf {
@@ -163,10 +165,10 @@ func ImportCSV(w http.ResponseWriter, r *http.Request) {
 					fmt.Println("Default Error")
 				}
 			}
-			keyStore[topID] = cp
+			KeyStore[topID] = cp
 		}
 	}
-	fmt.Println("Address List = ", keyStore)
+	fmt.Println("Address List = ", KeyStore)
 	fmt.Println("Import CSV File")
 }
 
@@ -176,7 +178,7 @@ func ExportCSV(w http.ResponseWriter, r *http.Request) {
 	check("Failed to open 'Data.csv'", err)
 	defer f.Close()
 	var line string
-	for _, v := range keyStore {
+	for _, v := range KeyStore {
 		if v.FirstName != "-first-" {
 			line = fmt.Sprintf("\"%v\", \"%v\", \"%v\", \"%v\", \"%v\"\n", v.UniqID, v.FirstName, v.LastName, v.EmailAddr, v.PhoneNumb)
 		}
@@ -187,26 +189,25 @@ func ExportCSV(w http.ResponseWriter, r *http.Request) {
 }
 
 //func GetBook(w http.ResponseWriter, r *http.Request) {
-//	fmt.Println("Address List = ", keyStore)
+//	fmt.Println("Address List = ", KeyStore)
 //	fmt.Println("Get Address Book")
 //}
 func SaveAddr(w http.ResponseWriter, r *http.Request) {
 	saveDatabase()
 	fmt.Println("Closing Address Book!")
-	os.Exit(1)
 }
 
 func loadDatabase() {
 	data, err := ioutil.ReadFile("Data.db") // Load Database
 	if err != nil {                         // If missing - Create
-		data, err = json.Marshal(keyStore) // Marshall Database
+		data, err = json.Marshal(KeyStore) // Marshall Database
 		check("Marshalling Failed", err)
 		_, err := os.Create("Data.db") // Create Database
 		check("Create File Failed", err)
 		writeData(data) // Write Database
-		fmt.Println("No Database Found - Creating New Empty Database!")
+		fmt.Println("Initialized Database")
 	} else {
-		err = json.Unmarshal(data, &keyStore) //Reload In-Memory Copy
+		err = json.Unmarshal(data, &KeyStore) //Reload In-Memory Copy
 		check("Unmarshal Failed", err)
 	}
 }
@@ -214,7 +215,7 @@ func loadDatabase() {
 // SaveHandler helper to create and store a new page in the database
 //
 func saveDatabase() {
-	data, err := json.Marshal(keyStore) // Marshal the database
+	data, err := json.Marshal(KeyStore) // Marshal the database
 	check("Marshalling Failed", err)    // Check for error
 	writeData(data)                     // Write database to the disk
 	return                              // Return
@@ -228,25 +229,33 @@ func writeData(data []byte) { // Write "Mashalled" data to external device
 	check("Write File Failed", err) // Error Check -- Panic if write fails
 }
 
-func main() {
-	fmt.Println("Address Book Server\n")
-	router := mux.NewRouter()
-
-	//Create Keystore map
-	keyStore = make(map[int]Person)
-
-	// Create Hidden System Record (Record at uniqID Zero(0) and iinitialize topID
+//
+// Create Empty Database
+// Create Hidden System Record (Record at uniqID Zero(0) and iinitialize topID.
+//
+func CreateDatabase() {
+	KeyStore = make(map[int]Person)
 	init := Person{"0", "-first-", "-last-", "-email-", "-phone-"}
-	keyStore[0] = init
+	KeyStore[0] = init
 	topID = 0
-	//
 	// Initialize or Load Data.db
 	loadDatabase()
+}
+
+//
+// Main -
+func main() {
+	fmt.Println("Address Book Server")
+	router := mux.NewRouter()
+
+	// CreateDatabase - Creates Keystore and Initialize Database
+	CreateDatabase()
+
 	//
 	// Setup API EndPoints
 	router.HandleFunc("/address", GetBook).Methods("GET")
-	router.HandleFunc("/address/{id}", GetPerson).Methods("GET")
 	router.HandleFunc("/address", CreatePerson).Methods("POST")
+	router.HandleFunc("/address/{id}", GetPerson).Methods("GET")
 	router.HandleFunc("/address/{id}", ModifyPerson).Methods("PUT")
 	router.HandleFunc("/address/{id}", DeletePerson).Methods("DELETE")
 	router.HandleFunc("/address/import", ImportCSV).Methods("POST")
