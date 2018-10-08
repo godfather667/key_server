@@ -67,8 +67,8 @@ func check(s string, e error) {
 
 // GetBook - Return All Valid Records in Last Name Order
 func GetBook(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Address List = ", KeyStore)
 	fmt.Println("Get Address Book")
+	fmt.Println("Address List = ", KeyStore)
 }
 
 // Get Persons Address at "uniqID"
@@ -128,16 +128,12 @@ func ModifyPerson(w http.ResponseWriter, r *http.Request) {
 
 // Delete Person at "uniqID"
 func DeletePerson(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Delete Response = ", r)
 	params := mux.Vars(r)
-	fmt.Println("Params =", params)
 	item := params["id"]
-	fmt.Println("Item = ", item)
 	ui, err := strconv.Atoi(item)
 	check("String Conversion Failure", err)
 	delete(KeyStore, ui)
 	saveDatabase()
-	fmt.Println("Delete Person")
 }
 
 // Import Data Base in CSV Format
@@ -262,9 +258,8 @@ func routeInit() {
 	//
 	a.Router = mux.NewRouter()
 
-	// CreateDatabase - Creates Keystore and Initialize Database
+	// Create Initial Database and KeyStore
 	CreateDatabase()
-
 	//
 	// Setup API EndPoints
 	//
@@ -276,7 +271,6 @@ func routeInit() {
 	a.Router.HandleFunc("/address/import", ImportCSV).Methods("POST")
 	a.Router.HandleFunc("/address/export", ExportCSV).Methods("POST")
 	a.Router.HandleFunc("/address/save", SaveAddr).Methods("POST")
-	log.Fatal(http.ListenAndServe(":8000", a.Router))
 }
 
 //
@@ -287,4 +281,7 @@ func main() {
 
 	// Initialize Router and Endpoints
 	routeInit()
+
+	// Listen and Serve at Port 8000
+	log.Fatal(http.ListenAndServe(":8000", a.Router))
 }

@@ -18,6 +18,13 @@ import (
 )
 
 //
+// Intialize Routes, KeyStore, and external database.
+//
+func init() {
+	routeInit()
+}
+
+//
 // Error Function
 //
 func testCheck(e error) {
@@ -50,19 +57,16 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 // Create Empty Initialized Database and KeyStore
 //
 func initDatabase() {
-
 	for k := range KeyStore { // Clear KeyStore
 		delete(KeyStore, k)
 	}
 	err := os.Remove("Data.db")
 	if err != nil {
 		fmt.Println("Database Initialized")
-	}
 
+	}
 	// Create Hidden System Record (Record at uniqID Zero(0) and iinitialize topID
 	CreateDatabase()
-
-	saveDatabase() // Create Empty Database
 }
 
 //
@@ -85,7 +89,6 @@ func getMD5(file string) []byte {
 // Test Database Loader
 //
 func TestLoadDatabase(t *testing.T) {
-
 	const null_db = "null"
 
 	init_db := Person{"0", "-first-", "-last-", "-email-", "-phone-"}
@@ -98,8 +101,6 @@ func TestLoadDatabase(t *testing.T) {
 		t.Error("\nExpected = ", init_db, "\nReturned = ", KeyStore[0])
 	}
 }
-
-    checkResponseCode(t, http.StatusOK, response.Code)
 
 //
 //  Test "TestPost" Function
@@ -158,23 +159,18 @@ func TestDeletePerson(t *testing.T) {
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 
-	//router := mux.NewRouter()
-	//router.HandleFunc("/address/{id}", DeletePerson).Methods("DELETE")
+	assert.Equal(t, 200, response.Code, "OK response is expected")
 
-	//	DeletePerson(response, request)
-
-	//	assert.Equal(t, 200, response.Code, "OK response is expected")
-
-	//	fmt.Println("Response.Body", response.Body.Bytes())
-	/*	if !bytes.Equal(bn, response.Body.Bytes()) {
-			t.Errorf("Body Didn't match:\n\tExpected:\t%q\n\tGot:\t%q", bn, response.Body.String())
-		}
-	*/
-	expected_md5 := []byte{17, 178, 136, 214, 219, 159, 205, 5, 139, 214, 206, 234, 33, 135, 168, 111}
+	fmt.Println("Response.Body", response.Body.Bytes())
+	if len(response.Body.Bytes()) > 0 {
+		t.Error("Body returned unknown data, should be empty: ", response.Body.Bytes())
+	}
+	expected_md5 := []byte{218, 214, 173, 125, 156, 5, 86, 165, 46, 91, 27, 36, 187, 240, 80, 52}
 	md5 := getMD5("Data.db")
 	for i, v := range expected_md5 {
 		if v != md5[i] {
 			t.Errorf("Database MD5 not equal to expected value!")
+			break
 		}
 	}
 }
