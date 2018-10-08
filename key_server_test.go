@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"testing"
 
+	//	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,6 +23,26 @@ import (
 func testCheck(e error) {
 	if e != nil {
 		panic(e)
+	}
+}
+
+//
+// Execute Request -
+//
+func executeRequest(req *http.Request) *httptest.ResponseRecorder {
+	rr := httptest.NewRecorder()
+	a.Router.ServeHTTP(rr, req)
+
+	return rr
+}
+
+//
+// Global Application Values
+//
+
+func checkResponseCode(t *testing.T, expected, actual int) {
+	if expected != actual {
+		t.Errorf("Expected response code %d. Got %d\n", expected, actual)
 	}
 }
 
@@ -78,6 +99,8 @@ func TestLoadDatabase(t *testing.T) {
 	}
 }
 
+    checkResponseCode(t, http.StatusOK, response.Code)
+
 //
 //  Test "TestPost" Function
 //
@@ -117,6 +140,36 @@ func TestCreatePerson(t *testing.T) {
 	if !bytes.Equal(bn, response.Body.Bytes()) {
 		t.Errorf("Body Didn't match:\n\tExpected:\t%q\n\tGot:\t%q", bn, response.Body.String())
 	}
+	expected_md5 := []byte{17, 178, 136, 214, 219, 159, 205, 5, 139, 214, 206, 234, 33, 135, 168, 111}
+	md5 := getMD5("Data.db")
+	for i, v := range expected_md5 {
+		if v != md5[i] {
+			t.Errorf("Database MD5 not equal to expected value!")
+		}
+	}
+}
+
+//
+//  Test "TestDelete" Function
+//
+func TestDeletePerson(t *testing.T) {
+	request, _ := http.NewRequest("DELETE", "http://localhost:8000/address/2", nil)
+	response := executeRequest(request)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	//router := mux.NewRouter()
+	//router.HandleFunc("/address/{id}", DeletePerson).Methods("DELETE")
+
+	//	DeletePerson(response, request)
+
+	//	assert.Equal(t, 200, response.Code, "OK response is expected")
+
+	//	fmt.Println("Response.Body", response.Body.Bytes())
+	/*	if !bytes.Equal(bn, response.Body.Bytes()) {
+			t.Errorf("Body Didn't match:\n\tExpected:\t%q\n\tGot:\t%q", bn, response.Body.String())
+		}
+	*/
 	expected_md5 := []byte{17, 178, 136, 214, 219, 159, 205, 5, 139, 214, 206, 234, 33, 135, 168, 111}
 	md5 := getMD5("Data.db")
 	for i, v := range expected_md5 {

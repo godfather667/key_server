@@ -14,8 +14,14 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Person Structure stores data for each person entered into the Database.
+// Define Application Global Parameters
+type App struct {
+	Router *mux.Router
+}
 
+var a App
+
+// Person Structure stores data for each person entered into the Database.
 type Person struct {
 	UniqID    string `json:"uniq_id,omitempty"`
 	FirstName string `json:"first_name,omitempty"`
@@ -24,12 +30,13 @@ type Person struct {
 	PhoneNumb string `json:"phone_numb,omitempty"`
 }
 
-type ks map[int]Person // Keystore Database Structure
+// Keystore Database Structure Type
+type ks map[int]Person
 
 // topID - Keeps Track of the highest ID recorded
 var topID int // Top ID in Database
 
-// In-memory Representation of Database
+// In-memory Representation of Keystore Database
 //        - topID lives "at" uniqID zero(0) in the external Keystore.
 //        - KeyStore[0] is a Reserved System Record.
 //
@@ -48,7 +55,7 @@ var topID int // Top ID in Database
 //          To insure Database Integrity Please issue "address/save".
 //          That will explicitly save the current in-memory Copy and exit(1).
 //
-var KeyStore ks // Keystore Database Structure
+var KeyStore ks
 
 // check - Test for Error and Panic if not nil.
 func check(s string, e error) {
@@ -121,8 +128,11 @@ func ModifyPerson(w http.ResponseWriter, r *http.Request) {
 
 // Delete Person at "uniqID"
 func DeletePerson(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Delete Response = ", r)
 	params := mux.Vars(r)
+	fmt.Println("Params =", params)
 	item := params["id"]
+	fmt.Println("Item = ", item)
 	ui, err := strconv.Atoi(item)
 	check("String Conversion Failure", err)
 	delete(KeyStore, ui)
@@ -239,27 +249,42 @@ func CreateDatabase() {
 	KeyStore[0] = init
 	topID = 0
 	// Initialize or Load Data.db
-	loadDatabase()
+	saveDatabase()
 }
 
 //
-// Main -
-func main() {
-	fmt.Println("Address Book Server")
-	router := mux.NewRouter()
+// Initialize Router and Endpoints
+//
+
+func routeInit() {
+	//
+	// Initialize Router
+	//
+	a.Router = mux.NewRouter()
 
 	// CreateDatabase - Creates Keystore and Initialize Database
 	CreateDatabase()
 
 	//
 	// Setup API EndPoints
-	router.HandleFunc("/address", GetBook).Methods("GET")
-	router.HandleFunc("/address", CreatePerson).Methods("POST")
-	router.HandleFunc("/address/{id}", GetPerson).Methods("GET")
-	router.HandleFunc("/address/{id}", ModifyPerson).Methods("PUT")
-	router.HandleFunc("/address/{id}", DeletePerson).Methods("DELETE")
-	router.HandleFunc("/address/import", ImportCSV).Methods("POST")
-	router.HandleFunc("/address/export", ExportCSV).Methods("POST")
-	router.HandleFunc("/address/save", SaveAddr).Methods("POST")
-	log.Fatal(http.ListenAndServe(":8000", router))
+	//
+	a.Router.HandleFunc("/address", GetBook).Methods("GET")
+	a.Router.HandleFunc("/address", CreatePerson).Methods("POST")
+	a.Router.HandleFunc("/address/{id}", GetPerson).Methods("GET")
+	a.Router.HandleFunc("/address/{id}", ModifyPerson).Methods("PUT")
+	a.Router.HandleFunc("/address/{id}", DeletePerson).Methods("DELETE")
+	a.Router.HandleFunc("/address/import", ImportCSV).Methods("POST")
+	a.Router.HandleFunc("/address/export", ExportCSV).Methods("POST")
+	a.Router.HandleFunc("/address/save", SaveAddr).Methods("POST")
+	log.Fatal(http.ListenAndServe(":8000", a.Router))
+}
+
+//
+// Main -
+//
+func main() {
+	fmt.Println("Address Book Server")
+
+	// Initialize Router and Endpoints
+	routeInit()
 }
