@@ -92,7 +92,6 @@ func CreatePerson(w http.ResponseWriter, r *http.Request) {
 	KeyStore[0] = Person{ui, "-first-", "-last-", "-email-", "-phone-"}
 	np := Person{ui, p.FirstName, p.LastName, p.EmailAddr, p.PhoneNumb}
 	KeyStore[topID] = np
-	fmt.Println("Create Person")
 	saveDatabase()
 }
 

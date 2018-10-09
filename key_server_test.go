@@ -106,16 +106,50 @@ func TestLoadDatabase(t *testing.T) {
 //  Test "TestPost" Function
 //
 func TestCreatePerson(t *testing.T) {
-	person := &Person{
+	person1 := &Person{
 		UniqID:    "1",
 		FirstName: "Charles",
 		LastName:  "Smith",
 		EmailAddr: "x@x.com",
 		PhoneNumb: "555-555-0000",
 	}
+	person2 := &Person{
+		UniqID:    "2",
+		FirstName: "Mike",
+		LastName:  "Jones",
+		EmailAddr: "x@x.com",
+		PhoneNumb: "555-555-0000",
+	}
+	person3 := &Person{
+		UniqID:    "3",
+		FirstName: "Mike",
+		LastName:  "Jones",
+		EmailAddr: "x@x.com",
+		PhoneNumb: "555-555-0000",
+	}
+
 	initDatabase() // Create Initialized Empty Database and KeyStore
 
-	jsonPerson, _ := json.Marshal(person)
+	// Create Three Records
+	performPost(person1, t)
+	performPost(person2, t)
+	performPost(person3, t)
+
+	// Check Results
+	expected_md5 := []byte{29, 74, 115, 183, 216, 113, 60, 12, 111, 163, 205, 217, 2, 53, 88, 82}
+	md5 := getMD5("Data.db")
+	for i, v := range expected_md5 {
+		if v != md5[i] {
+			t.Errorf("Database MD5 not equal to expected value!")
+		}
+	}
+}
+
+//
+// Perform Post Function
+//
+func performPost(p *Person, t *testing.T) {
+	jsonPerson, _ := json.Marshal(p)
 	request, _ := http.NewRequest("POST", "/address", bytes.NewBuffer(jsonPerson))
 	response := httptest.NewRecorder()
 	CreatePerson(response, request)
@@ -124,29 +158,6 @@ func TestCreatePerson(t *testing.T) {
 	var bn []byte // Empty Response!
 	if !bytes.Equal(bn, response.Body.Bytes()) {
 		t.Errorf("Body Didn't match:\n\tExpected:\t%q\n\tGot:\t%q", bn, response.Body.String())
-	}
-	person = &Person{
-		UniqID:    "2",
-		FirstName: "Mike",
-		LastName:  "Jones",
-		EmailAddr: "x@x.com",
-		PhoneNumb: "555-555-0000",
-	}
-	jsonPerson, _ = json.Marshal(person)
-	request, _ = http.NewRequest("POST", "/address", bytes.NewBuffer(jsonPerson))
-	response = httptest.NewRecorder()
-	CreatePerson(response, request)
-
-	assert.Equal(t, 200, response.Code, "OK response is expected")
-	if !bytes.Equal(bn, response.Body.Bytes()) {
-		t.Errorf("Body Didn't match:\n\tExpected:\t%q\n\tGot:\t%q", bn, response.Body.String())
-	}
-	expected_md5 := []byte{17, 178, 136, 214, 219, 159, 205, 5, 139, 214, 206, 234, 33, 135, 168, 111}
-	md5 := getMD5("Data.db")
-	for i, v := range expected_md5 {
-		if v != md5[i] {
-			t.Errorf("Database MD5 not equal to expected value!")
-		}
 	}
 }
 
@@ -161,11 +172,10 @@ func TestDeletePerson(t *testing.T) {
 
 	assert.Equal(t, 200, response.Code, "OK response is expected")
 
-	fmt.Println("Response.Body", response.Body.Bytes())
 	if len(response.Body.Bytes()) > 0 {
 		t.Error("Body returned unknown data, should be empty: ", response.Body.Bytes())
 	}
-	expected_md5 := []byte{218, 214, 173, 125, 156, 5, 86, 165, 46, 91, 27, 36, 187, 240, 80, 52}
+	expected_md5 := []byte{223, 94, 58, 240, 111, 32, 228, 168, 20, 2, 227, 98, 25, 96, 147, 34}
 	md5 := getMD5("Data.db")
 	for i, v := range expected_md5 {
 		if v != md5[i] {
