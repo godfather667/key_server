@@ -162,7 +162,7 @@ func performPost(p *Person, t *testing.T) {
 }
 
 //
-//  Test "TestDelete" Function
+//  Test "TestDeletePerson" Function
 //
 func TestDeletePerson(t *testing.T) {
 	request, _ := http.NewRequest("DELETE", "http://localhost:8000/address/2", nil)
@@ -176,6 +176,38 @@ func TestDeletePerson(t *testing.T) {
 		t.Error("Body returned unknown data, should be empty: ", response.Body.Bytes())
 	}
 	expected_md5 := []byte{223, 94, 58, 240, 111, 32, 228, 168, 20, 2, 227, 98, 25, 96, 147, 34}
+	md5 := getMD5("Data.db")
+	for i, v := range expected_md5 {
+		if v != md5[i] {
+			t.Errorf("Database MD5 not equal to expected value!")
+			break
+		}
+	}
+}
+
+//
+//  Test "TestModifyPerson" Function
+//
+func TestModifyPerson(t *testing.T) {
+	person3 := &Person{
+		UniqID:    "3",
+		FirstName: "Nancy",
+		LastName:  "Chow",
+		EmailAddr: "x@x.com",
+		PhoneNumb: "555-555-0000",
+	}
+	jsonPerson, _ := json.Marshal(person3)
+	request, _ := http.NewRequest("PUT", "http://localhost:8000/address/3", bytes.NewBuffer(jsonPerson))
+	response := executeRequest(request)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	assert.Equal(t, 200, response.Code, "OK response is expected")
+
+	if len(response.Body.Bytes()) > 0 {
+		t.Error("Body returned unknown data, should be empty: ", response.Body.Bytes())
+	}
+	expected_md5 := []byte{54, 62, 217, 186, 210, 30, 205, 213, 3, 249, 151, 217, 81, 17, 147, 213}
 	md5 := getMD5("Data.db")
 	for i, v := range expected_md5 {
 		if v != md5[i] {
