@@ -67,8 +67,7 @@ func check(s string, e error) {
 
 // GetBook - Return All Valid Records in Last Name Order
 func GetBook(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Get Address Book")
-	fmt.Println("Address List = ", KeyStore)
+	json.NewEncoder(w).Encode(KeyStore)
 }
 
 // Get Persons Address at "uniqID"
@@ -77,8 +76,7 @@ func GetPerson(w http.ResponseWriter, r *http.Request) {
 	item := params["id"]
 	ui, err := strconv.Atoi(item)
 	check("String Conversion Failure", err)
-	fmt.Println("Requested Person = ", KeyStore[ui])
-	fmt.Println("Get Persons Address")
+	json.NewEncoder(w).Encode(KeyStore[ui].EmailAddr)
 }
 
 // Create Person in Address Book
@@ -122,7 +120,6 @@ func ModifyPerson(w http.ResponseWriter, r *http.Request) {
 	np := Person{cp.UniqID, cp.FirstName, cp.LastName, cp.EmailAddr, cp.PhoneNumb}
 	KeyStore[ui] = np
 	saveDatabase()
-	fmt.Println("Modify Person")
 }
 
 // Delete Person at "uniqID"
@@ -146,14 +143,13 @@ func ImportCSV(w http.ResponseWriter, r *http.Request) {
 	}
 	init := Person{"0", "-first-", "-last-", "-email-", "-phone-"}
 	KeyStore[0] = init
-	topID = 0
+	topID = 1
 
-	for i, v := range str_buf {
+	for _, v := range str_buf {
+		cp := Person{}
 		if len(v) != 0 {
-			topID += 1
-			fmt.Println("Line[", i, "] = ", v, "len = ", len(v))
+			//			fmt.Println("V = ", v)
 			d := strings.Split(v, ",")
-			cp := Person{}
 			for j, f := range d {
 				switch j {
 				case 0:
@@ -171,10 +167,13 @@ func ImportCSV(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			KeyStore[topID] = cp
+			topID += 1
 		}
 	}
-	fmt.Println("Address List = ", KeyStore)
-	fmt.Println("Import CSV File")
+	init = Person{"0", "-first-", "-last-", "-email-", "-phone-"}
+	init.UniqID = strconv.Itoa(topID)
+	KeyStore[0] = init
+	//	fmt.Println("KS = ", KeyStore)
 }
 
 // Export Data Base in CSV Format
@@ -185,21 +184,18 @@ func ExportCSV(w http.ResponseWriter, r *http.Request) {
 	var line string
 	for _, v := range KeyStore {
 		if v.FirstName != "-first-" {
-			line = fmt.Sprintf("\"%v\", \"%v\", \"%v\", \"%v\", \"%v\"\n", v.UniqID, v.FirstName, v.LastName, v.EmailAddr, v.PhoneNumb)
+			line = fmt.Sprintf("%v,%v,%v,%v,%v\n", v.UniqID, v.FirstName, v.LastName, v.EmailAddr, v.PhoneNumb)
 		}
+		//		fmt.Println("KS[", i, "] = ", v)
 		_, err := f.WriteString(line)
 		check("Write Failed for 'Data.csv'", err)
 	}
-	fmt.Println("Export CSV File")
 }
 
-//func GetBook(w http.ResponseWriter, r *http.Request) {
-//	fmt.Println("Address List = ", KeyStore)
-//	fmt.Println("Get Address Book")
+// Save Database
 //}
 func SaveAddr(w http.ResponseWriter, r *http.Request) {
 	saveDatabase()
-	fmt.Println("Closing Address Book!")
 }
 
 func loadDatabase() {

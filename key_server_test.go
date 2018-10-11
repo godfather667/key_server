@@ -1,4 +1,17 @@
-// key_server_test - Test key_server restapi address book database
+// key_server_test - Test key_server restAPI address book database
+//
+// This program DOES NOT demonstrate the most compact type of Testing.
+// It purposely demonstrates several testing techniques and the code
+// is straight forward without numerous table driven opaque functions.
+//
+// Further this test must be run in sequence. Omitting Tests will invalidate
+// the results as the tests depend on each other. This is not the best technique
+// but it produces a simple test of all operations.
+//
+// Productions tests should be independent of each other. In practice, this
+// means there will be a lot of duplication when working with Database Functions.
+//
+//For a table driven testing see "db_demo" at https://github.com/godfather667
 package main
 
 import (
@@ -7,10 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"reflect"
+	_ "strconv"
 	"testing"
 
 	//	"github.com/gorilla/mux"
@@ -214,5 +229,109 @@ func TestModifyPerson(t *testing.T) {
 			t.Errorf("Database MD5 not equal to expected value!")
 			break
 		}
+	}
+}
+
+//
+// Test Get Person
+//
+func TestGetPerson(t *testing.T) {
+	request, _ := http.NewRequest("GET", "http://localhost:8000/address/3", nil)
+	response := executeRequest(request)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+	assert.Equal(t, 200, response.Code, "OK response is expected")
+
+	expectedBytes := []byte{34, 120, 64, 120, 46, 99, 111, 109, 34, 10}
+	for i, v := range response.Body.Bytes() {
+		if expectedBytes[i] != v {
+			t.Errorf("Expected: %s  Result = %s", string(expectedBytes), response.Body.Bytes())
+			break
+		}
+	}
+}
+func TestGetBook(t *testing.T) {
+	request, _ := http.NewRequest("GET", "http://localhost:8000/address", nil)
+	response := executeRequest(request)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+	assert.Equal(t, 200, response.Code, "OK response is expected")
+
+	expectedBytes := []byte{123, 34, 48, 34, 58, 123, 34, 117, 110, 105, 113, 95, 105, 100, 34, 58,
+		34, 51, 34, 44, 34, 102, 105, 114, 115, 116, 95, 110, 97, 109, 101, 34, 58, 34, 45, 102,
+		105, 114, 115, 116, 45, 34, 44, 34, 108, 97, 115, 116, 95, 110, 97, 109, 101, 34, 58, 34,
+		45, 108, 97, 115, 116, 45, 34, 44, 34, 101, 109, 97, 105, 108, 95, 97, 100, 100, 114, 34,
+		58, 34, 45, 101, 109, 97, 105, 108, 45, 34, 44, 34, 112, 104, 111, 110, 101, 95, 110, 117,
+		109, 98, 34, 58, 34, 45, 112, 104, 111, 110, 101, 45, 34, 125, 44, 34, 49, 34, 58, 123, 34,
+		117, 110, 105, 113, 95, 105, 100, 34, 58, 34, 49, 34, 44, 34, 102, 105, 114, 115, 116, 95,
+		110, 97, 109, 101, 34, 58, 34, 67, 104, 97, 114, 108, 101, 115, 34, 44, 34, 108, 97, 115,
+		116, 95, 110, 97, 109, 101, 34, 58, 34, 83, 109, 105, 116, 104, 34, 44, 34, 101, 109, 97,
+		105, 108, 95, 97, 100, 100, 114, 34, 58, 34, 120, 64, 120, 46, 99, 111, 109, 34, 44, 34,
+		112, 104, 111, 110, 101, 95, 110, 117, 109, 98, 34, 58, 34, 53, 53, 53, 45, 53, 53, 53,
+		45, 48, 48, 48, 48, 34, 125, 44, 34, 51, 34, 58, 123, 34, 117, 110, 105, 113, 95, 105,
+		100, 34, 58, 34, 51, 34, 44, 34, 102, 105, 114, 115, 116, 95, 110, 97, 109, 101, 34, 58,
+		34, 78, 97, 110, 99, 121, 34, 44, 34, 108, 97, 115, 116, 95, 110, 97, 109, 101, 34, 58,
+		34, 67, 104, 111, 119, 34, 44, 34, 101, 109, 97, 105, 108, 95, 97, 100, 100, 114, 34, 58,
+		34, 120, 64, 120, 46, 99, 111, 109, 34, 44, 34, 112, 104, 111, 110, 101, 95, 110, 117,
+		109, 98, 34, 58, 34, 53, 53, 53, 45, 53, 53, 53, 45, 48, 48, 48, 48, 34, 125, 125, 10}
+	for i, v := range response.Body.Bytes() {
+		if expectedBytes[i] != v {
+			t.Errorf("Expected: %s\n  Result = %s", string(expectedBytes), response.Body.Bytes())
+			break
+		}
+	}
+}
+
+//
+// Test Export Function
+//
+func TestExportCSV(t *testing.T) {
+	request, _ := http.NewRequest("POST", "/address", nil)
+	response := httptest.NewRecorder()
+	ExportCSV(response, request)
+
+	assert.Equal(t, 200, response.Code, "OK response is expected")
+	var bn []byte // Empty Response!
+	if !bytes.Equal(bn, response.Body.Bytes()) {
+		t.Errorf("Body Didn't match:\n\tExpected:\t%q\n\tGot:\t%q", bn, response.Body.String())
+	}
+	dat, err := ioutil.ReadFile("Data.csv")
+	check("Read of Data.csv Failed! ", err)
+
+	expectedBytes := []byte{49, 44, 67, 104, 97, 114, 108, 101, 115, 44, 83, 109, 105, 116, 104, 44, 120, 64, 120, 46, 99, 111, 109, 44, 53, 53, 53,
+		45, 53, 53, 53, 45, 48, 48, 48, 48, 10, 51, 44, 78, 97, 110, 99, 121, 44, 67, 104, 111, 119, 44, 120, 64, 120, 46, 99, 111, 109, 44, 53, 53, 53, 45,
+		53, 53, 53, 45, 48, 48, 48, 48, 10}
+	for i, v := range dat {
+		if expectedBytes[i] != v {
+			t.Errorf("Expected: %s\n  Result = %s", string(expectedBytes), dat)
+			break
+		}
+	}
+}
+
+//
+// Test Import Function
+//
+func TestImportCSV(t *testing.T) {
+	OrgStore := make(map[int]Person)
+	for i, _ := range KeyStore { // Make Copy of Orginal KeyStore
+		OrgStore[i] = KeyStore[i]
+	}
+	request, _ := http.NewRequest("POST", "/address", nil)
+	response := httptest.NewRecorder()
+	ImportCSV(response, request)
+	assert.Equal(t, 200, response.Code, "OK response is expected")
+
+	if KeyStore[1].FirstName != "Charles" ||
+		KeyStore[1].LastName != "Smith" ||
+		KeyStore[1].EmailAddr != "x@x.com" ||
+		KeyStore[1].PhoneNumb != "555-555-0000" {
+		t.Error("Expected: Charles Smith -- Got: ", KeyStore[1])
+	}
+	if KeyStore[2].FirstName != "Nancy" ||
+		KeyStore[2].LastName != "Chow" ||
+		KeyStore[2].EmailAddr != "x@x.com" ||
+		KeyStore[2].PhoneNumb != "555-555-0000" {
+		t.Error("Expected: Nancy Chow -- Got: ", KeyStore[2])
 	}
 }
